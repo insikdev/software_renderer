@@ -4,9 +4,13 @@
     <ClCompile Include="main.cpp" />
     <ClCompile Include="window.cpp" />
     <ClCompile Include="renderer.cpp" />
+    <ClCompile Include="pch.cpp" />
+    <ClCompile Include="geometry_helper.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="window.h" />
     <ClInclude Include="renderer.h" />
+    <ClInclude Include="pch.h" />
+    <ClInclude Include="geometry_helper.h" />
   </ItemGroup>
 </Project>

@@ -1,9 +1,11 @@
+#include "pch.h"
 #include "renderer.h"
 
 int main()
 {
-    Renderer* r = new Renderer { "Software Renderer", 640, 480 };
-    r->Run();
-    delete r;
+    const int width = 640;
+    const int height = 480;
+    std::make_unique<Renderer>("Software Renderer", width, height)->Run();
+
     return 0;
 }
