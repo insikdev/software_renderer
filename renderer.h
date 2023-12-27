@@ -1,6 +1,7 @@
 #pragma once
 
 class Window;
+class Texture;
 
 class Renderer {
 public:
@@ -16,8 +17,14 @@ private:
     void Render(void);
     void Present(void);
 
+private: // pipeline
+    void VertexShader(std::vector<Vertex>& vertices);
+    void Rasterizer(const std::array<Vertex, 3>& vertices);
+    void FragmentShader(void);
+
 private:
     void RenderTriangle(const std::vector<Vertex>& vertices);
+    void RenderTriangleByIndex(const std::vector<Vertex>& vertices, const std::vector<uint32_t>& indices);
 
 private: // util
     glm::uvec2 NDCToScreen(const glm::vec3& ndc);
@@ -34,4 +41,6 @@ private: // fps
 private:
     SDL_Surface* m_frontBuffer;
     SDL_Surface* m_backBuffer;
+    std::unique_ptr<Texture> m_texture;
+    std::vector<Fragment> m_fragments;
 };

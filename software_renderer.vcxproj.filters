@@ -6,11 +6,13 @@
     <ClCompile Include="renderer.cpp" />
     <ClCompile Include="pch.cpp" />
     <ClCompile Include="geometry_helper.cpp" />
+    <ClCompile Include="texture.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="window.h" />
     <ClInclude Include="renderer.h" />
     <ClInclude Include="pch.h" />
     <ClInclude Include="geometry_helper.h" />
+    <ClInclude Include="texture.h" />
   </ItemGroup>
 </Project>
