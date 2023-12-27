@@ -15,16 +15,12 @@ private:
     void HandleEvent(void);
     void Update(void);
     void Render(void);
-    void Present(void);
 
 private: // pipeline
     void VertexShader(std::vector<Vertex>& vertices);
     void Rasterizer(const std::array<Vertex, 3>& vertices);
     void FragmentShader(void);
-
-private:
-    void RenderTriangle(const std::vector<Vertex>& vertices);
-    void RenderTriangleByIndex(const std::vector<Vertex>& vertices, const std::vector<uint32_t>& indices);
+    void Present(void);
 
 private: // util
     glm::uvec2 NDCToScreen(const glm::vec3& ndc);

@@ -21,6 +21,7 @@ struct Vertex {
 struct Fragment {
     glm::vec3 color;
     glm::vec2 uv;
+    bool active;
 };
 
 struct MeshData {

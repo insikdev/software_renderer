@@ -5,12 +5,11 @@
 #include "texture.h"
 
 Renderer::Renderer(std::string title, int width, int height)
+    : m_fragments(width * height)
 {
     p_window = std::make_unique<Window>(title, width, height);
     m_frontBuffer = SDL_GetWindowSurface(p_window->GetWindow());
     m_backBuffer = SDL_CreateRGBSurfaceWithFormat(0, m_frontBuffer->w, m_frontBuffer->h, m_frontBuffer->format->BitsPerPixel, m_frontBuffer->format->format);
-
-    m_fragments.reserve(width * height);
 }
 
 Renderer::~Renderer()
@@ -60,35 +59,15 @@ void Renderer::Update()
 
 void Renderer::Render(void)
 {
-    /* This assumes that color value zero is black. Use SDL_MapRGBA() for more robust surface color mapping! */
-    /* height times pitch is the size of the surface's whole buffer. */
+    // clear buffer
+    memset(m_fragments.data(), 0, m_fragments.size());
     SDL_memset(m_backBuffer->pixels, 100, m_backBuffer->h * m_backBuffer->pitch);
 
-    Uint32* pixels = (Uint32*)m_backBuffer->pixels;
-
-    // for (int i = 10000; i < 100000; i++) {
-    //     pixels[i] = SDL_MapRGB(m_backBuffer->format, 100, 100, 100);
-    // }
-
-    // for (int i = 0; i < 3; i++) {
-    //     auto p = NDCToScreen(pos[i] * 0.5f);
-    //     int index = p.x + p.y * p_window->GetWidth();
-
-    //    pixels[index] = SDL_MapRGB(m_backBuffer->format, 255, 255, 255);
-    //}
-    std::array<glm::vec2, 3> triangle1 = { glm::vec2(-1.0f, 1.0f), glm::vec2(-1.0f, -1.0f), glm::vec2(1.0f, -1.0f) };
-    std::array<glm::vec2, 3> triangle2 = { glm::vec2(-1.0f, 1.0f), glm::vec2(1.0f, -1.0f), glm::vec2(1.0f, 1.0f) };
-
-    // RenderTriangle(triangle1);
-    // RenderTriangle(triangle2);
-
     MeshData data = GeometryHelper::CreateRectangle();
-    // RenderTriangleByIndex(data.vertices, data.indices);
 
     auto& vertices = data.vertices;
     auto& indices = data.indices;
 
-    m_fragments.clear();
     VertexShader(vertices);
 
     for (int i = 0; i < indices.size(); i += 3) {
@@ -98,12 +77,6 @@ void Renderer::Render(void)
     FragmentShader();
 
     Present();
-}
-
-void Renderer::Present(void)
-{
-    SDL_BlitSurface(m_backBuffer, NULL, m_frontBuffer, NULL);
-    SDL_UpdateWindowSurface(p_window->GetWindow());
 }
 
 void Renderer::VertexShader(std::vector<Vertex>& vertices)
@@ -122,33 +95,32 @@ void Renderer::Rasterizer(const std::array<Vertex, 3>& vertices)
     glm::uvec2 p2 = NDCToScreen(vertices[2].position);
 
     int minX = std::min({ p0.x, p1.x, p2.x });
+    minX = std::max(0, minX);
     int maxX = std::max({ p0.x, p1.x, p2.x });
+    maxX = std::min(p_window->GetWidth(), maxX);
 
     int minY = std::min({ p0.y, p1.y, p2.y });
+    minY = std::max(0, minY);
     int maxY = std::max({ p0.y, p1.y, p2.y });
+    maxY = std::min(p_window->GetHeight(), maxY);
 
     for (int y = minY; y < maxY; y++) {
         for (int x = minX; x < maxX; x++) {
             int index = x + y * p_window->GetWidth();
             glm::vec2 pixel = glm::vec2(static_cast<float>(x), static_cast<float>(y));
 
-            auto bc = CalculateBarycentricCoordinate(pixel, p0, p1, p2);
+            glm::vec3 bc = CalculateBarycentricCoordinate(pixel, p0, p1, p2);
 
             if ((bc.x >= 0.0f) && (bc.x <= 1.0f) && (bc.y >= 0.0f) && (bc.y <= 1.0f) && (bc.z >= 0.0f) && (bc.z <= 1.0f)) {
-                glm::vec3 interpolation = bc * glm::vec3(vertices[0].color.r, vertices[1].color.r, vertices[2].color.r);
-                float r = bc.x * vertices[0].color.r + bc.y * vertices[1].color.r + bc.z * vertices[2].color.r;
-                float g = bc.x * vertices[0].color.g + bc.y * vertices[1].color.g + bc.z * vertices[2].color.g;
-                float b = bc.x * vertices[0].color.b + bc.y * vertices[1].color.b + bc.z * vertices[2].color.b;
+                m_fragments[index].active = true;
 
-                float u = bc.x * vertices[0].uv.x + bc.y * vertices[1].uv.x + bc.z * vertices[2].uv.x;
-                float v = bc.x * vertices[0].uv.y + bc.y * vertices[1].uv.y + bc.z * vertices[2].uv.y;
+                // interpolation using barycentric coordinate
+                m_fragments[index].color.r = bc.x * vertices[0].color.r + bc.y * vertices[1].color.r + bc.z * vertices[2].color.r;
+                m_fragments[index].color.g = bc.x * vertices[0].color.g + bc.y * vertices[1].color.g + bc.z * vertices[2].color.g;
+                m_fragments[index].color.b = bc.x * vertices[0].color.b + bc.y * vertices[1].color.b + bc.z * vertices[2].color.b;
 
-                m_fragments[index].color.r = r;
-                m_fragments[index].color.g = g;
-                m_fragments[index].color.b = b;
-
-                m_fragments[index].uv.x = u;
-                m_fragments[index].uv.y = v;
+                m_fragments[index].uv.x = bc.x * vertices[0].uv.x + bc.y * vertices[1].uv.x + bc.z * vertices[2].uv.x;
+                m_fragments[index].uv.y = bc.x * vertices[0].uv.y + bc.y * vertices[1].uv.y + bc.z * vertices[2].uv.y;
             }
         }
     }
@@ -158,84 +130,18 @@ void Renderer::FragmentShader(void)
 {
     Uint32* pixels = (Uint32*)m_backBuffer->pixels;
 
-    for (int y = 0; y < p_window->GetHeight(); y++) {
-        for (int x = 0; x < p_window->GetWidth(); x++) {
-            int index = x + y * p_window->GetWidth();
-
-            if (m_fragments[index].color.x != 0) {
-                uint8_t* color = m_texture->GetRGBA(m_fragments[index].uv);
-
-                pixels[index] = SDL_MapRGB(m_backBuffer->format, *color, *(color + 1), *(color + 2));
-            }
+    for (uint32_t i = 0; i < m_fragments.size(); i++) {
+        if (m_fragments[i].active) {
+            uint8_t* color = m_texture->GetRGBA(m_fragments[i].uv);
+            pixels[i] = SDL_MapRGB(m_backBuffer->format, *color, *(color + 1), *(color + 2));
         }
     }
 }
 
-void Renderer::RenderTriangle(const std::vector<Vertex>& vertices)
+void Renderer::Present(void)
 {
-    Uint32* pixels = (Uint32*)m_backBuffer->pixels;
-
-    float scale = 0.5f;
-
-    glm::uvec2 screenPos[] = { NDCToScreen(vertices[0].position * scale), NDCToScreen(vertices[1].position * scale), NDCToScreen(vertices[2].position * scale) };
-
-    int minX = std::min({ screenPos[0].x, screenPos[1].x, screenPos[2].x });
-    int maxX = std::max({ screenPos[0].x, screenPos[1].x, screenPos[2].x });
-    int minY = std::min({ screenPos[0].y, screenPos[1].y, screenPos[2].y });
-    int maxY = std::max({ screenPos[0].y, screenPos[1].y, screenPos[2].y });
-
-    // using bounding box fps = 1400 in release
-    // loop all pixel fps = 650
-
-    // for (int y = 0; y < p_window->GetHeight(); y++) {
-    //     for (int x = 0; x < p_window->GetWidth(); x++) {
-    for (int y = minY; y < maxY; y++) {
-        for (int x = minX; x < maxX; x++) {
-            int index = x + y * p_window->GetWidth();
-            glm::vec2 pixel = glm::vec2(static_cast<float>(x), static_cast<float>(y));
-
-            //{ // calculate bartcentric using cross product
-            //    glm::vec3 point = glm::vec3(pixel, 0.0f);
-            //    auto w0 = glm::cross(point - glm::vec3(screenPos[0], 0.0f), glm::vec3(screenPos[1], 0.0f) - glm::vec3(screenPos[0], 0.0f)).z;
-            //    auto w1 = glm::cross(point - glm::vec3(screenPos[1], 0.0f), glm::vec3(screenPos[2], 0.0f) - glm::vec3(screenPos[1], 0.0f)).z;
-            //    auto w2 = glm::cross(point - glm::vec3(screenPos[2], 0.0f), glm::vec3(screenPos[0], 0.0f) - glm::vec3(screenPos[2], 0.0f)).z;
-
-            //    if (w0 >= 0.0f && w1 >= 0.0f && w2 >= 0.0f) {
-            //        float a = 1 / (w0 + w1 + w2);
-            //        float r = w0 * vertices[0].color.r + w1 * vertices[1].color.r + w2 * vertices[2].color.r;
-            //        float g = w0 * vertices[0].color.g + w1 * vertices[1].color.g + w2 * vertices[2].color.g;
-            //        float b = w0 * vertices[0].color.b + w1 * vertices[1].color.b + w2 * vertices[2].color.b;
-
-            //        pixels[index] = SDL_MapRGB(m_backBuffer->format, static_cast<Uint8>(r * 255 * a), static_cast<Uint8>(g * 255 * a), static_cast<Uint8>(b * 255 * a));
-            //    }
-            //}
-
-            auto bc = CalculateBarycentricCoordinate(pixel, screenPos[0], screenPos[1], screenPos[2]);
-
-            if ((bc.x >= 0.0f) && (bc.x <= 1.0f) && (bc.y >= 0.0f) && (bc.y <= 1.0f) && (bc.z >= 0.0f) && (bc.z <= 1.0f)) {
-
-                float r = bc.x * vertices[0].color.r + bc.y * vertices[1].color.r + bc.z * vertices[2].color.r;
-                float g = bc.x * vertices[0].color.g + bc.y * vertices[1].color.g + bc.z * vertices[2].color.g;
-                float b = bc.x * vertices[0].color.b + bc.y * vertices[1].color.b + bc.z * vertices[2].color.b;
-
-                float u = bc.x * vertices[0].uv.x + bc.y * vertices[1].uv.x + bc.z * vertices[2].uv.x;
-                float v = bc.x * vertices[0].uv.y + bc.y * vertices[1].uv.y + bc.z * vertices[2].uv.y;
-
-                uint8_t* color = m_texture->GetRGBA(u, v);
-
-                pixels[index] = SDL_MapRGB(m_backBuffer->format, *color, *(color + 1), *(color + 2));
-                // pixels[index] = SDL_MapRGB(m_backBuffer->format, static_cast<Uint8>(r * 255), static_cast<Uint8>(g * 255), static_cast<Uint8>(b * 255));
-                // pixels[index] = SDL_MapRGB(m_backBuffer->format, 255, 255, 255);
-            }
-        }
-    }
-}
-
-void Renderer::RenderTriangleByIndex(const std::vector<Vertex>& vertices, const std::vector<uint32_t>& indices)
-{
-    for (int i = 0; i < indices.size(); i += 3) {
-        RenderTriangle({ vertices[indices[i]], vertices[indices[i + 1]], vertices[indices[i + 2]] });
-    }
+    SDL_BlitSurface(m_backBuffer, NULL, m_frontBuffer, NULL);
+    SDL_UpdateWindowSurface(p_window->GetWindow());
 }
 
 // viewport transform
@@ -244,8 +150,8 @@ void Renderer::RenderTriangleByIndex(const std::vector<Vertex>& vertices, const 
 // ndcY : [-1, 1] -> screenY : [-0.5, height - 0.5]
 glm::uvec2 Renderer::NDCToScreen(const glm::vec3& ndc)
 {
-    const int w = p_window->GetWidth();
-    const int h = p_window->GetHeight();
+    int w = p_window->GetWidth();
+    int h = p_window->GetHeight();
     float aspectRatio = static_cast<float>(w) / h;
 
     float screenX = (ndc.x / aspectRatio + 1.0f) * w * 0.5f - 0.5f;
