@@ -3,7 +3,9 @@
 // library
 #define SDL_MAIN_HANDLED
 #include <SDL2/SDL.h>
+
 #include <glm/glm.hpp>
+#include <glm/gtc/matrix_transform.hpp>
 
 // std
 #include <array>
@@ -13,14 +15,14 @@
 #include <iostream>
 
 struct Vertex {
-    glm::vec3 position;
-    glm::vec3 color;
+    glm::vec4 position;
+    glm::vec3 normal;
     glm::vec2 uv;
 };
 
 struct Fragment {
-    glm::vec3 color;
     glm::vec2 uv;
+    float depth;
     bool active;
 };
 

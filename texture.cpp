@@ -31,6 +31,7 @@ uint8_t* Texture::GetRGBA(const glm::vec2& uv)
 {
     int x = static_cast<int>(uv.x * m_width);
     int y = static_cast<int>(uv.y * m_height);
+
     int index = (y * m_width + x) * m_channels;
 
     return m_data + index;

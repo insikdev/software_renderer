@@ -9,6 +9,7 @@ public: // getter
     SDL_Window* GetWindow(void) const { return m_window; }
     int GetWidth(void) const { return m_width; }
     int GetHeight(void) const { return m_height; }
+    float GetAspectRatio(void) const { return m_width / static_cast<float>(m_height); }
 
 private:
     SDL_Window* m_window {};

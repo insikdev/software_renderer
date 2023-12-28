@@ -55,15 +55,17 @@ void Renderer::Update()
         snprintf(title, sizeof(title), "FPS: %.2f", fps);
         SDL_SetWindowTitle(p_window->GetWindow(), title);
     }
+    m_angle += 0.001f * dt;
 }
 
 void Renderer::Render(void)
 {
     // clear buffer
-    memset(m_fragments.data(), 0, m_fragments.size());
-    SDL_memset(m_backBuffer->pixels, 100, m_backBuffer->h * m_backBuffer->pitch);
+    SDL_FillRect(m_backBuffer, NULL, SDL_MapRGBA(m_backBuffer->format, 0, 0, 0, 255));
+    // memset(m_fragments.data(), 0, m_fragments.size() * sizeof(Fragment));
 
-    MeshData data = GeometryHelper::CreateRectangle();
+    // MeshData data = GeometryHelper::CreateRectangle();
+    MeshData data = GeometryHelper::CreateCube();
 
     auto& vertices = data.vertices;
     auto& indices = data.indices;
@@ -81,18 +83,26 @@ void Renderer::Render(void)
 
 void Renderer::VertexShader(std::vector<Vertex>& vertices)
 {
-    float scale = 0.5f;
+    glm::mat4 world = glm::rotate(glm::mat4(1.0f), glm::radians(m_angle), glm::vec3(0.0f, 1.0f, 0.0f));
+    glm::mat4 view = glm::lookAt(glm::vec3(0.0f, 0.0f, 3.0f), glm::vec3(0.0f), glm::vec3(0.0f, 1.0f, 0.0f));
+    glm::mat4 proj = glm::perspective(glm::radians(70.0f), p_window->GetAspectRatio(), 1.0f, 50.0f);
 
-    for (auto& v : vertices) {
-        v.position *= scale;
+    for (Vertex& v : vertices) {
+        v.position = proj * view * world * v.position;
     }
 }
 
 void Renderer::Rasterizer(const std::array<Vertex, 3>& vertices)
 {
-    glm::uvec2 p0 = NDCToScreen(vertices[0].position);
-    glm::uvec2 p1 = NDCToScreen(vertices[1].position);
-    glm::uvec2 p2 = NDCToScreen(vertices[2].position);
+    // perspective division
+    glm::vec3 ndc0 = glm::vec3(vertices[0].position / vertices[0].position.w);
+    glm::vec3 ndc1 = glm::vec3(vertices[1].position / vertices[1].position.w);
+    glm::vec3 ndc2 = glm::vec3(vertices[2].position / vertices[2].position.w);
+
+    // viewport transform
+    glm::uvec2 p0 = NDCToScreen(ndc0);
+    glm::uvec2 p1 = NDCToScreen(ndc1);
+    glm::uvec2 p2 = NDCToScreen(ndc2);
 
     int minX = std::min({ p0.x, p1.x, p2.x });
     minX = std::max(0, minX);
@@ -112,15 +122,22 @@ void Renderer::Rasterizer(const std::array<Vertex, 3>& vertices)
             glm::vec3 bc = CalculateBarycentricCoordinate(pixel, p0, p1, p2);
 
             if ((bc.x >= 0.0f) && (bc.x <= 1.0f) && (bc.y >= 0.0f) && (bc.y <= 1.0f) && (bc.z >= 0.0f) && (bc.z <= 1.0f)) {
-                m_fragments[index].active = true;
+                float depth = bc.x * ndc0.z + bc.y * ndc1.z + bc.z * ndc2.z;
+
+                // depth test
+                if (m_fragments[index].active && depth > m_fragments[index].depth) {
+                    continue;
+                }
+
+                float invZ0 = 1.0f / vertices[0].position.w;
+                float invZ1 = 1.0f / vertices[1].position.w;
+                float invZ2 = 1.0f / vertices[2].position.w;
+                float invZ = 1.0f / (invZ0 * bc.x + invZ1 * bc.y + invZ2 * bc.z);
 
                 // interpolation using barycentric coordinate
-                m_fragments[index].color.r = bc.x * vertices[0].color.r + bc.y * vertices[1].color.r + bc.z * vertices[2].color.r;
-                m_fragments[index].color.g = bc.x * vertices[0].color.g + bc.y * vertices[1].color.g + bc.z * vertices[2].color.g;
-                m_fragments[index].color.b = bc.x * vertices[0].color.b + bc.y * vertices[1].color.b + bc.z * vertices[2].color.b;
-
-                m_fragments[index].uv.x = bc.x * vertices[0].uv.x + bc.y * vertices[1].uv.x + bc.z * vertices[2].uv.x;
-                m_fragments[index].uv.y = bc.x * vertices[0].uv.y + bc.y * vertices[1].uv.y + bc.z * vertices[2].uv.y;
+                m_fragments[index].active = true;
+                m_fragments[index].depth = depth;
+                m_fragments[index].uv = (bc.x * vertices[0].uv * invZ0 + bc.y * vertices[1].uv * invZ1 + bc.z * vertices[2].uv * invZ2) * invZ;
             }
         }
     }
@@ -133,7 +150,8 @@ void Renderer::FragmentShader(void)
     for (uint32_t i = 0; i < m_fragments.size(); i++) {
         if (m_fragments[i].active) {
             uint8_t* color = m_texture->GetRGBA(m_fragments[i].uv);
-            pixels[i] = SDL_MapRGB(m_backBuffer->format, *color, *(color + 1), *(color + 2));
+            pixels[i] = SDL_MapRGBA(m_backBuffer->format, *color, *(color + 1), *(color + 2), 255);
+            m_fragments[i].active = false;
         }
     }
 }

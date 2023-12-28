@@ -39,4 +39,5 @@ private:
     SDL_Surface* m_backBuffer;
     std::unique_ptr<Texture> m_texture;
     std::vector<Fragment> m_fragments;
+    float m_angle {};
 };

@@ -15,4 +15,7 @@
     <ClInclude Include="geometry_helper.h" />
     <ClInclude Include="texture.h" />
   </ItemGroup>
+  <ItemGroup>
+    <None Include="README.md" />
+  </ItemGroup>
 </Project>
