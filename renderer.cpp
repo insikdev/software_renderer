@@ -2,26 +2,39 @@
 #include "renderer.h"
 #include "window.h"
 #include "geometry_helper.h"
-#include "texture.h"
+#include "object.h"
+#include "simple_pipeline.h"
+#include "resource_manager.h"
 
 Renderer::Renderer(std::string title, int width, int height)
-    : m_fragments(width * height)
 {
     p_window = std::make_unique<Window>(title, width, height);
     m_frontBuffer = SDL_GetWindowSurface(p_window->GetWindow());
     m_backBuffer = SDL_CreateRGBSurfaceWithFormat(0, m_frontBuffer->w, m_frontBuffer->h, m_frontBuffer->format->BitsPerPixel, m_frontBuffer->format->format);
+
+    int totalPixels = m_frontBuffer->w * m_frontBuffer->h;
+    m_fragments = new Fragment[totalPixels];
+    // init
+    std::shared_ptr<MeshData> cube = std::make_shared<MeshData>(GeometryHelper::CreateCube());
+
+    m_objects.push_back(new Object { cube, ResourceManager::GetTexture("assets/wall.jpg") });
+
+    p_pipeline = new SimplePipeline {};
+    p_pipeline->SetFrameBuffer(m_backBuffer);
+    p_pipeline->SetFragmentBuffer(m_fragments);
+    p_pipeline->SetViewport(m_backBuffer->w, m_backBuffer->h);
 }
 
 Renderer::~Renderer()
 {
+    ResourceManager::Clean();
+    delete p_pipeline;
+    delete m_fragments;
     SDL_FreeSurface(m_backBuffer);
 }
 
 void Renderer::Run(void)
 {
-    // m_texture = std::make_unique<Texture>("assets/awesomeface.png");
-    m_texture = std::make_unique<Texture>("assets/wall.jpg");
-
     while (m_isRunning) {
         HandleEvent();
         Update();
@@ -38,162 +51,73 @@ void Renderer::HandleEvent(void)
             m_isRunning = false;
         }
     }
+
+    const uint8_t* keyboardState = SDL_GetKeyboardState(NULL);
+
+    if (keyboardState[SDL_SCANCODE_ESCAPE]) {
+        m_isRunning = false;
+    }
 }
 
 void Renderer::Update()
 {
-    m_frameCount++;
-    uint64_t currentFrameTime = SDL_GetTicks64();
-    uint64_t dt = currentFrameTime - m_prevFrameTime;
+    static uint32_t frameCount = 0;
+    static uint64_t sec = 0;
+    static uint64_t prev = 0;
 
-    if (dt >= 1000) {
-        float fps = m_frameCount / (dt / 1000.0f);
-        m_frameCount = 0;
-        m_prevFrameTime = currentFrameTime;
+    frameCount++;
+    uint64_t current = SDL_GetTicks64(); // ms
+    uint64_t dt = current - prev;
+    sec += dt;
 
-        char title[16];
-        snprintf(title, sizeof(title), "FPS: %.2f", fps);
-        SDL_SetWindowTitle(p_window->GetWindow(), title);
+    const uint8_t* keyboardState = SDL_GetKeyboardState(NULL);
+
+    for (auto& obj : m_objects) {
+        if (keyboardState[SDL_SCANCODE_W]) {
+            obj->m_transform.MoveY(dt * 0.1);
+        }
+        if (keyboardState[SDL_SCANCODE_S]) {
+            obj->m_transform.MoveY(dt * -0.1);
+        }
+        if (keyboardState[SDL_SCANCODE_A]) {
+            obj->m_transform.MoveX(dt * -0.1);
+        }
+        if (keyboardState[SDL_SCANCODE_D]) {
+            obj->m_transform.MoveX(dt * 0.1);
+        }
+        if (keyboardState[SDL_SCANCODE_R]) {
+            obj->m_transform.m_position = glm::vec3(0.0f);
+        }
     }
-    m_angle += 0.001f * dt;
+
+    if (sec >= 1000) {
+        char title[16];
+        snprintf(title, sizeof(title), "FPS: %d", frameCount);
+        SDL_SetWindowTitle(p_window->GetWindow(), title);
+
+        frameCount = 0;
+        sec = 0;
+    }
+    prev = current;
 }
 
 void Renderer::Render(void)
 {
     // clear buffer
     SDL_FillRect(m_backBuffer, NULL, SDL_MapRGBA(m_backBuffer->format, 0, 0, 0, 255));
-    // memset(m_fragments.data(), 0, m_fragments.size() * sizeof(Fragment));
+    memset(m_fragments, 0, m_backBuffer->w * m_backBuffer->h * sizeof(Fragment));
 
-    // MeshData data = GeometryHelper::CreateRectangle();
-    MeshData data = GeometryHelper::CreateCube();
-
-    auto& vertices = data.vertices;
-    auto& indices = data.indices;
-
-    VertexShader(vertices);
-
-    for (int i = 0; i < indices.size(); i += 3) {
-        Rasterizer({ vertices[indices[i]], vertices[indices[i + 1]], vertices[indices[i + 2]] });
-    }
-
-    FragmentShader();
-
-    Present();
-}
-
-void Renderer::VertexShader(std::vector<Vertex>& vertices)
-{
-    glm::mat4 world = glm::rotate(glm::mat4(1.0f), glm::radians(m_angle), glm::vec3(0.0f, 1.0f, 0.0f));
+    // set uniform data
     glm::mat4 view = glm::lookAt(glm::vec3(0.0f, 0.0f, 3.0f), glm::vec3(0.0f), glm::vec3(0.0f, 1.0f, 0.0f));
     glm::mat4 proj = glm::perspective(glm::radians(70.0f), p_window->GetAspectRatio(), 1.0f, 50.0f);
+    p_pipeline->SetViewMatrix(view);
+    p_pipeline->SetProjMatrix(proj);
 
-    for (Vertex& v : vertices) {
-        v.position = proj * view * world * v.position;
+    for (const auto& obj : m_objects) {
+        p_pipeline->Draw(obj);
     }
-}
 
-void Renderer::Rasterizer(const std::array<Vertex, 3>& vertices)
-{
-    // perspective division
-    glm::vec3 ndc0 = glm::vec3(vertices[0].position / vertices[0].position.w);
-    glm::vec3 ndc1 = glm::vec3(vertices[1].position / vertices[1].position.w);
-    glm::vec3 ndc2 = glm::vec3(vertices[2].position / vertices[2].position.w);
-
-    // viewport transform
-    glm::uvec2 p0 = NDCToScreen(ndc0);
-    glm::uvec2 p1 = NDCToScreen(ndc1);
-    glm::uvec2 p2 = NDCToScreen(ndc2);
-
-    int minX = std::min({ p0.x, p1.x, p2.x });
-    minX = std::max(0, minX);
-    int maxX = std::max({ p0.x, p1.x, p2.x });
-    maxX = std::min(p_window->GetWidth(), maxX);
-
-    int minY = std::min({ p0.y, p1.y, p2.y });
-    minY = std::max(0, minY);
-    int maxY = std::max({ p0.y, p1.y, p2.y });
-    maxY = std::min(p_window->GetHeight(), maxY);
-
-    for (int y = minY; y < maxY; y++) {
-        for (int x = minX; x < maxX; x++) {
-            int index = x + y * p_window->GetWidth();
-            glm::vec2 pixel = glm::vec2(static_cast<float>(x), static_cast<float>(y));
-
-            glm::vec3 bc = CalculateBarycentricCoordinate(pixel, p0, p1, p2);
-
-            if ((bc.x >= 0.0f) && (bc.x <= 1.0f) && (bc.y >= 0.0f) && (bc.y <= 1.0f) && (bc.z >= 0.0f) && (bc.z <= 1.0f)) {
-                float depth = bc.x * ndc0.z + bc.y * ndc1.z + bc.z * ndc2.z;
-
-                // depth test
-                if (m_fragments[index].active && depth > m_fragments[index].depth) {
-                    continue;
-                }
-
-                float invZ0 = 1.0f / vertices[0].position.w;
-                float invZ1 = 1.0f / vertices[1].position.w;
-                float invZ2 = 1.0f / vertices[2].position.w;
-                float invZ = 1.0f / (invZ0 * bc.x + invZ1 * bc.y + invZ2 * bc.z);
-
-                // interpolation using barycentric coordinate
-                m_fragments[index].active = true;
-                m_fragments[index].depth = depth;
-                m_fragments[index].uv = (bc.x * vertices[0].uv * invZ0 + bc.y * vertices[1].uv * invZ1 + bc.z * vertices[2].uv * invZ2) * invZ;
-            }
-        }
-    }
-}
-
-void Renderer::FragmentShader(void)
-{
-    Uint32* pixels = (Uint32*)m_backBuffer->pixels;
-
-    for (uint32_t i = 0; i < m_fragments.size(); i++) {
-        if (m_fragments[i].active) {
-            uint8_t* color = m_texture->GetRGBA(m_fragments[i].uv);
-            pixels[i] = SDL_MapRGBA(m_backBuffer->format, *color, *(color + 1), *(color + 2), 255);
-            m_fragments[i].active = false;
-        }
-    }
-}
-
-void Renderer::Present(void)
-{
+    // present
     SDL_BlitSurface(m_backBuffer, NULL, m_frontBuffer, NULL);
     SDL_UpdateWindowSurface(p_window->GetWindow());
-}
-
-// viewport transform
-// origin of screen space is top-left
-// ndcX : [-1, 1] -> screenX : [-0.5, width - 0.5]
-// ndcY : [-1, 1] -> screenY : [-0.5, height - 0.5]
-glm::uvec2 Renderer::NDCToScreen(const glm::vec3& ndc)
-{
-    int w = p_window->GetWidth();
-    int h = p_window->GetHeight();
-    float aspectRatio = static_cast<float>(w) / h;
-
-    float screenX = (ndc.x / aspectRatio + 1.0f) * w * 0.5f - 0.5f;
-    float screenY = (1.0f - ndc.y) * h * 0.5f - 0.5f;
-
-    return glm::uvec2(static_cast<uint32_t>(screenX), static_cast<uint32_t>(screenY));
-}
-
-glm::vec3 Renderer::CalculateBarycentricCoordinate(const glm::vec2& target, const glm::vec2& p0, const glm::vec2& p1, const glm::vec2& p2)
-{
-    glm::vec2 w = target - p2;
-    glm::vec2 u = p0 - p2;
-    glm::vec2 v = p1 - p2;
-
-    float wdotu = glm::dot(w, u);
-    float wdotv = glm::dot(w, v);
-    float udotv = glm::dot(u, v);
-    float udotu = glm::dot(u, u);
-    float vdotv = glm::dot(v, v);
-
-    float denom = udotv * udotv - udotu * vdotv;
-
-    float s = (wdotv * udotv - wdotu * vdotv) / denom;
-    float t = (wdotu * udotv - wdotv * udotu) / denom;
-
-    return glm::vec3(s, t, 1.0f - s - t);
 }

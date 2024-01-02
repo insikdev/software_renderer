@@ -13,6 +13,8 @@
 #include <memory>
 #include <string>
 #include <iostream>
+#include <algorithm>
+#include <unordered_map>
 
 struct Vertex {
     glm::vec4 position;

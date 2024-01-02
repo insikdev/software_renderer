@@ -2,6 +2,8 @@
 
 class Window;
 class Texture;
+class Object;
+class Pipeline;
 
 class Renderer {
 public:
@@ -16,28 +18,16 @@ private:
     void Update(void);
     void Render(void);
 
-private: // pipeline
-    void VertexShader(std::vector<Vertex>& vertices);
-    void Rasterizer(const std::array<Vertex, 3>& vertices);
-    void FragmentShader(void);
-    void Present(void);
-
-private: // util
-    glm::uvec2 NDCToScreen(const glm::vec3& ndc);
-    glm::vec3 CalculateBarycentricCoordinate(const glm::vec2& target, const glm::vec2& p0, const glm::vec2& p1, const glm::vec2& p2);
-
 private:
     std::unique_ptr<const Window> p_window;
     bool m_isRunning { true };
 
-private: // fps
-    uint64_t m_prevFrameTime {};
-    uint64_t m_frameCount {};
-
 private:
+    Pipeline* p_pipeline;
     SDL_Surface* m_frontBuffer;
     SDL_Surface* m_backBuffer;
-    std::unique_ptr<Texture> m_texture;
-    std::vector<Fragment> m_fragments;
-    float m_angle {};
+    Fragment* m_fragments;
+
+private: // scene
+    std::vector<Object*> m_objects;
 };
