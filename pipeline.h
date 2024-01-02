@@ -38,7 +38,7 @@ public: // uniform
     void SetProjMatrix(const glm::mat4& proj) { m_uniform.proj = proj; }
 
 private:
-    glm::uvec2 NDCToScreen(const glm::vec3& ndc);
+    glm::ivec2 NDCToScreen(const glm::vec3& ndc);
     glm::vec3 CalculateBarycentricCoordinate(const glm::vec2& target, const glm::vec2& p0, const glm::vec2& p1, const glm::vec2& p2);
     void Rasterizer(const std::array<Vertex, 3>& vertices);
 

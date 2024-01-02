@@ -85,6 +85,12 @@ void Renderer::Update()
         if (keyboardState[SDL_SCANCODE_D]) {
             obj->m_transform.MoveX(dt * 0.1);
         }
+        if (keyboardState[SDL_SCANCODE_Q]) {
+            obj->m_transform.MoveZ(dt * 0.1);
+        }
+        if (keyboardState[SDL_SCANCODE_E]) {
+            obj->m_transform.MoveZ(dt * -0.1);
+        }
         if (keyboardState[SDL_SCANCODE_R]) {
             obj->m_transform.m_position = glm::vec3(0.0f);
         }

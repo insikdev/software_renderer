@@ -23,14 +23,14 @@ void Pipeline::Draw(const Object* obj)
 // origin of screen space is top-left
 // ndcX : [-1, 1] -> screenX : [-0.5, width - 0.5]
 // ndcY : [-1, 1] -> screenY : [-0.5, height - 0.5]
-glm::uvec2 Pipeline::NDCToScreen(const glm::vec3& ndc)
+glm::ivec2 Pipeline::NDCToScreen(const glm::vec3& ndc)
 {
     float aspectRatio = static_cast<float>(m_width) / m_height;
 
     float screenX = (ndc.x / aspectRatio + 1.0f) * m_width * 0.5f - 0.5f;
     float screenY = (1.0f - ndc.y) * m_height * 0.5f - 0.5f;
 
-    return glm::uvec2(static_cast<uint32_t>(screenX), static_cast<uint32_t>(screenY));
+    return glm::ivec2(static_cast<uint32_t>(screenX), static_cast<uint32_t>(screenY));
 }
 
 glm::vec3 Pipeline::CalculateBarycentricCoordinate(const glm::vec2& target, const glm::vec2& p0, const glm::vec2& p1, const glm::vec2& p2)
@@ -61,19 +61,14 @@ void Pipeline::Rasterizer(const std::array<Vertex, 3>& vertices)
     glm::vec3 ndc2 = glm::vec3(vertices[2].position / vertices[2].position.w);
 
     // viewport transform
-    glm::uvec2 p0 = NDCToScreen(ndc0);
-    glm::uvec2 p1 = NDCToScreen(ndc1);
-    glm::uvec2 p2 = NDCToScreen(ndc2);
+    glm::ivec2 p0 = NDCToScreen(ndc0);
+    glm::ivec2 p1 = NDCToScreen(ndc1);
+    glm::ivec2 p2 = NDCToScreen(ndc2);
 
-    int minX = std::min({ p0.x, p1.x, p2.x });
-    minX = std::max(0, minX);
-    int maxX = std::max({ p0.x, p1.x, p2.x });
-    maxX = std::min(m_width - 1, maxX);
-
-    int minY = std::min({ p0.y, p1.y, p2.y });
-    minY = std::max(0, minY);
-    int maxY = std::max({ p0.y, p1.y, p2.y });
-    maxY = std::min(m_height - 1, maxY);
+    int minX = std::max(0, std::min({ p0.x, p1.x, p2.x }));
+    int maxX = std::min(m_width, std::max({ p0.x, p1.x, p2.x }));
+    int minY = std::max(0, std::min({ p0.y, p1.y, p2.y }));
+    int maxY = std::min(m_height, std::max({ p0.y, p1.y, p2.y }));
 
     for (int y = minY; y < maxY; y++) {
         for (int x = minX; x < maxX; x++) {
