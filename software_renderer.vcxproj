@@ -139,6 +139,7 @@
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|x64'">Create</PrecompiledHeader>
     </ClCompile>
     <ClCompile Include="pipeline.cpp" />
+    <ClCompile Include="plane.cpp" />
     <ClCompile Include="renderer.cpp" />
     <ClCompile Include="resource_manager.cpp" />
     <ClCompile Include="simple_pipeline.cpp" />
@@ -151,6 +152,7 @@
     <ClInclude Include="object.h" />
     <ClInclude Include="pch.h" />
     <ClInclude Include="pipeline.h" />
+    <ClInclude Include="plane.h" />
     <ClInclude Include="renderer.h" />
     <ClInclude Include="resource_manager.h" />
     <ClInclude Include="simple_pipeline.h" />

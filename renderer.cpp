@@ -114,10 +114,8 @@ void Renderer::Render(void)
     memset(m_fragments, 0, m_backBuffer->w * m_backBuffer->h * sizeof(Fragment));
 
     // set uniform data
-    glm::mat4 view = glm::lookAt(glm::vec3(0.0f, 0.0f, 3.0f), glm::vec3(0.0f), glm::vec3(0.0f, 1.0f, 0.0f));
-    glm::mat4 proj = glm::perspective(glm::radians(70.0f), p_window->GetAspectRatio(), 1.0f, 50.0f);
-    p_pipeline->SetViewMatrix(view);
-    p_pipeline->SetProjMatrix(proj);
+    p_pipeline->SetViewMatrix(glm::lookAt(glm::vec3(0.0f, 0.0f, 3.0f), glm::vec3(0.0f), glm::vec3(0.0f, 1.0f, 0.0f)));
+    p_pipeline->SetProjMatrix(glm::perspective(glm::radians(60.0f), p_window->GetAspectRatio(), 1.0f, 10.0f));
 
     for (const auto& obj : m_objects) {
         p_pipeline->Draw(obj);

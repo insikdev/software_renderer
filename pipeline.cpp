@@ -56,15 +56,18 @@ glm::vec3 Pipeline::CalculateBarycentricCoordinate(const glm::vec2& target, cons
 void Pipeline::Rasterizer(const std::array<Vertex, 3>& vertices)
 {
     // perspective division
+    // clip coordinate -> NDC
     glm::vec3 ndc0 = glm::vec3(vertices[0].position / vertices[0].position.w);
     glm::vec3 ndc1 = glm::vec3(vertices[1].position / vertices[1].position.w);
     glm::vec3 ndc2 = glm::vec3(vertices[2].position / vertices[2].position.w);
 
     // viewport transform
+    // NDC -> screen coordinate
     glm::ivec2 p0 = NDCToScreen(ndc0);
     glm::ivec2 p1 = NDCToScreen(ndc1);
     glm::ivec2 p2 = NDCToScreen(ndc2);
 
+    // calculate bounding box
     int minX = std::max(0, std::min({ p0.x, p1.x, p2.x }));
     int maxX = std::min(m_width, std::max({ p0.x, p1.x, p2.x }));
     int minY = std::max(0, std::min({ p0.y, p1.y, p2.y }));
