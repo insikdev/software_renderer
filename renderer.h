@@ -21,6 +21,7 @@ private:
 private:
     std::unique_ptr<const Window> p_window;
     bool m_isRunning { true };
+    bool m_isWireFrameMode { false };
 
 private:
     Pipeline* p_pipeline;

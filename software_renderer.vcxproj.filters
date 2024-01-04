@@ -18,7 +18,7 @@
     <ClCompile Include="resource_manager.cpp">
       <Filter>manager</Filter>
     </ClCompile>
-    <ClCompile Include="plane.cpp" />
+    <ClCompile Include="frustum.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="window.h" />
@@ -38,6 +38,7 @@
       <Filter>manager</Filter>
     </ClInclude>
     <ClInclude Include="plane.h" />
+    <ClInclude Include="frustum.h" />
   </ItemGroup>
   <ItemGroup>
     <None Include="README.md" />

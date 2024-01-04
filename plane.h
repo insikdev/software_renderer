@@ -2,12 +2,6 @@
 
 class Plane {
 public:
-    Plane(glm::vec3 normal, float d)
-        : m_normal { normal }
-        , m_d { d }
-    {
-    }
-
     Plane(glm::vec4 input)
     {
         glm::vec3 normal = glm::vec3(input);
@@ -21,7 +15,7 @@ public:
 public:
     float DistanceFromPoint(glm::vec3 point) const { return glm::dot(m_normal, point) + m_d; };
 
-private:
+public:
     glm::vec3 m_normal;
     float m_d;
 };

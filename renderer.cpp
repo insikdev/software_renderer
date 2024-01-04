@@ -15,6 +15,9 @@ Renderer::Renderer(std::string title, int width, int height)
     int totalPixels = m_frontBuffer->w * m_frontBuffer->h;
     m_fragments = new Fragment[totalPixels];
     // init
+
+    std::shared_ptr<MeshData> triangle = std::make_shared<MeshData>(GeometryHelper::CreateTriangle());
+    std::shared_ptr<MeshData> rect = std::make_shared<MeshData>(GeometryHelper::CreateRectangle());
     std::shared_ptr<MeshData> cube = std::make_shared<MeshData>(GeometryHelper::CreateCube());
 
     m_objects.push_back(new Object { cube, ResourceManager::GetTexture("assets/wall.jpg") });
@@ -57,6 +60,13 @@ void Renderer::HandleEvent(void)
     if (keyboardState[SDL_SCANCODE_ESCAPE]) {
         m_isRunning = false;
     }
+
+    if (keyboardState[SDL_SCANCODE_1]) {
+        p_pipeline->IsWireFrameMode = false;
+    }
+    if (keyboardState[SDL_SCANCODE_2]) {
+        p_pipeline->IsWireFrameMode = true;
+    }
 }
 
 void Renderer::Update()
@@ -80,7 +90,8 @@ void Renderer::Update()
             obj->m_transform.MoveY(dt * -0.1);
         }
         if (keyboardState[SDL_SCANCODE_A]) {
-            obj->m_transform.MoveX(dt * -0.1);
+            // obj->m_transform.MoveX(dt * -0.1);
+            obj->m_transform.m_position.x += dt * -0.01;
         }
         if (keyboardState[SDL_SCANCODE_D]) {
             obj->m_transform.MoveX(dt * 0.1);
@@ -115,8 +126,9 @@ void Renderer::Render(void)
 
     // set uniform data
     p_pipeline->SetViewMatrix(glm::lookAt(glm::vec3(0.0f, 0.0f, 3.0f), glm::vec3(0.0f), glm::vec3(0.0f, 1.0f, 0.0f)));
-    p_pipeline->SetProjMatrix(glm::perspective(glm::radians(60.0f), p_window->GetAspectRatio(), 1.0f, 10.0f));
+    p_pipeline->SetProjMatrix(glm::perspective(glm::radians(70.0f), p_window->GetAspectRatio(), 1.0f, 10.0f));
 
+    // draw
     for (const auto& obj : m_objects) {
         p_pipeline->Draw(obj);
     }
