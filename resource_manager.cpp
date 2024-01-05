@@ -4,10 +4,6 @@
 
 std::unordered_map<std::string, std::shared_ptr<Texture>> ResourceManager::m_textures;
 
-void ResourceManager::Initialize(void)
-{
-}
-
 void ResourceManager::Clean(void)
 {
     m_textures.clear();

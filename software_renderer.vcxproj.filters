@@ -7,7 +7,6 @@
     <ClCompile Include="pch.cpp" />
     <ClCompile Include="geometry_helper.cpp" />
     <ClCompile Include="texture.cpp" />
-    <ClCompile Include="object.cpp" />
     <ClCompile Include="transform.cpp" />
     <ClCompile Include="pipeline.cpp">
       <Filter>pipeline</Filter>
@@ -18,7 +17,9 @@
     <ClCompile Include="resource_manager.cpp">
       <Filter>manager</Filter>
     </ClCompile>
-    <ClCompile Include="frustum.cpp" />
+    <ClCompile Include="object.cpp">
+      <Filter>object</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="window.h" />
@@ -26,7 +27,6 @@
     <ClInclude Include="pch.h" />
     <ClInclude Include="geometry_helper.h" />
     <ClInclude Include="texture.h" />
-    <ClInclude Include="object.h" />
     <ClInclude Include="transform.h" />
     <ClInclude Include="pipeline.h">
       <Filter>pipeline</Filter>
@@ -38,7 +38,9 @@
       <Filter>manager</Filter>
     </ClInclude>
     <ClInclude Include="plane.h" />
-    <ClInclude Include="frustum.h" />
+    <ClInclude Include="object.h">
+      <Filter>object</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <None Include="README.md" />
@@ -49,6 +51,9 @@
     </Filter>
     <Filter Include="manager">
       <UniqueIdentifier>{6f01c830-1cbc-403d-b959-086f4ff7a71f}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="object">
+      <UniqueIdentifier>{70e3aedc-fb44-4be7-906d-f740224c8df7}</UniqueIdentifier>
     </Filter>
   </ItemGroup>
 </Project>

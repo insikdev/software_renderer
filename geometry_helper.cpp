@@ -6,9 +6,9 @@ MeshData GeometryHelper::CreateTriangle(void)
     MeshData data;
 
     data.vertices = {
-        { { 0.0f, 1.0f, 0.0f, 1.0f }, { 0.0f, 0.0f, 1.0f }, {} },
-        { { -1.0f, -1.0f, 0.0f, 1.0f }, { 0.0f, 0.0f, 1.0f }, {} },
-        { { 1.0f, -1.0f, 0.0f, 1.0f }, { 0.0f, 0.0f, 1.0f }, {} },
+        { { 0.0f, 1.0f, 0.0f, 1.0f }, { 0.0f, 0.0f, 1.0f }, { 0.0f, 0.0f } },
+        { { -1.0f, -1.0f, 0.0f, 1.0f }, { 0.0f, 0.0f, 1.0f }, { 0.0f, 0.0f } },
+        { { 1.0f, -1.0f, 0.0f, 1.0f }, { 0.0f, 0.0f, 1.0f }, { 0.0f, 0.0f } },
     };
 
     data.indices = { 0, 1, 2 };
@@ -74,7 +74,6 @@ MeshData GeometryHelper::CreateCube(void)
         { { -1.0f, -1.0f, -1.0f, 1.0f }, { -1.0f, 0.0f, 0.0f }, { 0.0f, 1.0f } }
     };
 
-    // VK_FRONT_FACE_COUNTER_CLOCKWISE
     data.indices = {
         0, 2, 3, 0, 1, 2, // Front face
         4, 6, 7, 4, 5, 6, // Back face

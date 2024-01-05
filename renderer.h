@@ -19,12 +19,11 @@ private:
     void Render(void);
 
 private:
-    std::unique_ptr<const Window> p_window;
-    bool m_isRunning { true };
-    bool m_isWireFrameMode { false };
+    Window* p_window;
+    Pipeline* p_pipeline;
 
 private:
-    Pipeline* p_pipeline;
+    bool m_isRunning { true };
     SDL_Surface* m_frontBuffer;
     SDL_Surface* m_backBuffer;
     Fragment* m_fragments;

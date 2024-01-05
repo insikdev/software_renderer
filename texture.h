@@ -6,7 +6,6 @@ public:
     ~Texture();
 
 public:
-    uint8_t* GetRGBA(float u, float v);
     uint8_t* GetRGBA(const glm::vec2& uv);
 
 private:

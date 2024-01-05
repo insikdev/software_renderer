@@ -41,10 +41,10 @@ private:
     int ComputeOutCode(const glm::ivec2& input, const glm::ivec2& min, const glm::ivec2& max);
     bool LineClip(glm::ivec2& p0, glm::ivec2& p1, const glm::ivec2& min, const glm::ivec2& max);
     void DrawLine(glm::ivec2 p0, glm::ivec2 p1);
-    bool FrustumCulling(const glm::mat4& mvp);
+    float EdgeFunction(const glm::vec2& p0, const glm::vec2& p1, const glm::vec2& p2);
+    bool FrustumCulling(const glm::mat4& mvp, const AABB& boundingVolume);
     void Rasterizer(const std::array<Vertex, 3>& vertices);
     glm::ivec2 NDCToScreen(const glm::vec3& ndc);
-    glm::vec3 CalculateBarycentricCoordinate(const glm::vec2& target, const glm::vec2& p0, const glm::vec2& p1, const glm::vec2& p2);
 
 protected:
     virtual void VertexShader(std::vector<Vertex>& vertices) = 0;
@@ -59,6 +59,7 @@ protected:
     int m_width { 640 };
     int m_height { 480 };
 
-public:
+public: // pipeline state
     bool IsWireFrameMode { false };
+    bool IsCullBackFace { false };
 };

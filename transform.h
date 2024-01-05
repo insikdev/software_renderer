@@ -9,9 +9,14 @@ public:
     glm::mat4 GetWorldMatrix(void) const;
 
 public:
-    void MoveX(float dx) { m_position.x += m_moveSpeed * dx; }
-    void MoveY(float dy) { m_position.y += m_moveSpeed * dy; }
-    void MoveZ(float dz) { m_position.z += m_moveSpeed * dz; }
+    void MoveX(int dx) { m_position.x += m_speed * dx; }
+    void MoveY(int dy) { m_position.y += m_speed * dy; }
+    void MoveZ(int dz) { m_position.z += m_speed * dz; }
+
+public: // setter
+    void SetScale(const glm::vec3& scale) { m_scale = scale; }
+    void SetRotation(const glm::vec3& rotation) { m_rotation = rotation; }
+    void SetPosition(const glm::vec3& position) { m_position = position; }
 
 public:
     glm::vec3 m_scale { glm::vec3(1.0f) };
@@ -19,5 +24,5 @@ public:
     glm::vec3 m_position { glm::vec3(0.0f) };
 
 private:
-    float m_moveSpeed { 0.05f };
+    float m_speed { 0.005f };
 };

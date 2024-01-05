@@ -1,17 +1,14 @@
 # software_renderer
 
-### dependency
+### dependencies
 - SDL
 - glm
+- stb_image
 
-### vertex shader
-- local space -> clip space
+### feature
+- frustum culling
+- backface culling
+- wireframe mode
 
-### rasterizer
-1. perspective division
-	- clip space -> NDC
-2. viewport transform
-3. depth test
-4. interpolation using barycentric coordinate
-
-### fragment shader
+### TODO
+- clipping

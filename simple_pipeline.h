@@ -1,4 +1,5 @@
 #pragma once
+
 #include "pipeline.h"
 
 class SimplePipeline : public Pipeline {

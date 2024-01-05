@@ -131,7 +131,6 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
-    <ClCompile Include="frustum.cpp" />
     <ClCompile Include="geometry_helper.cpp" />
     <ClCompile Include="main.cpp" />
     <ClCompile Include="object.cpp" />
@@ -148,7 +147,6 @@
     <ClCompile Include="window.cpp" />
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="frustum.h" />
     <ClInclude Include="geometry_helper.h" />
     <ClInclude Include="object.h" />
     <ClInclude Include="pch.h" />

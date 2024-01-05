@@ -8,32 +8,31 @@
 
 Renderer::Renderer(std::string title, int width, int height)
 {
-    p_window = std::make_unique<Window>(title, width, height);
+    p_window = new Window { title, width, height };
+
     m_frontBuffer = SDL_GetWindowSurface(p_window->GetWindow());
     m_backBuffer = SDL_CreateRGBSurfaceWithFormat(0, m_frontBuffer->w, m_frontBuffer->h, m_frontBuffer->format->BitsPerPixel, m_frontBuffer->format->format);
-
-    int totalPixels = m_frontBuffer->w * m_frontBuffer->h;
-    m_fragments = new Fragment[totalPixels];
-    // init
-
-    std::shared_ptr<MeshData> triangle = std::make_shared<MeshData>(GeometryHelper::CreateTriangle());
-    std::shared_ptr<MeshData> rect = std::make_shared<MeshData>(GeometryHelper::CreateRectangle());
-    std::shared_ptr<MeshData> cube = std::make_shared<MeshData>(GeometryHelper::CreateCube());
-
-    m_objects.push_back(new Object { cube, ResourceManager::GetTexture("assets/wall.jpg") });
+    m_fragments = new Fragment[m_frontBuffer->w * m_frontBuffer->h];
 
     p_pipeline = new SimplePipeline {};
     p_pipeline->SetFrameBuffer(m_backBuffer);
     p_pipeline->SetFragmentBuffer(m_fragments);
     p_pipeline->SetViewport(m_backBuffer->w, m_backBuffer->h);
+
+    // std::shared_ptr<MeshData> triangle = std::make_shared<MeshData>(GeometryHelper::CreateTriangle());
+    // std::shared_ptr<MeshData> rect = std::make_shared<MeshData>(GeometryHelper::CreateRectangle());
+    std::shared_ptr<MeshData> cube = std::make_shared<MeshData>(GeometryHelper::CreateCube());
+
+    m_objects.push_back(new Object { cube, ResourceManager::GetTexture("assets/wall.jpg") });
 }
 
 Renderer::~Renderer()
 {
     ResourceManager::Clean();
-    delete p_pipeline;
-    delete m_fragments;
     SDL_FreeSurface(m_backBuffer);
+    delete m_fragments;
+    delete p_pipeline;
+    delete p_window;
 }
 
 void Renderer::Run(void)
@@ -67,6 +66,12 @@ void Renderer::HandleEvent(void)
     if (keyboardState[SDL_SCANCODE_2]) {
         p_pipeline->IsWireFrameMode = true;
     }
+    if (keyboardState[SDL_SCANCODE_3]) {
+        p_pipeline->IsCullBackFace = false;
+    }
+    if (keyboardState[SDL_SCANCODE_4]) {
+        p_pipeline->IsCullBackFace = true;
+    }
 }
 
 void Renderer::Update()
@@ -80,31 +85,8 @@ void Renderer::Update()
     uint64_t dt = current - prev;
     sec += dt;
 
-    const uint8_t* keyboardState = SDL_GetKeyboardState(NULL);
-
     for (auto& obj : m_objects) {
-        if (keyboardState[SDL_SCANCODE_W]) {
-            obj->m_transform.MoveY(dt * 0.1);
-        }
-        if (keyboardState[SDL_SCANCODE_S]) {
-            obj->m_transform.MoveY(dt * -0.1);
-        }
-        if (keyboardState[SDL_SCANCODE_A]) {
-            // obj->m_transform.MoveX(dt * -0.1);
-            obj->m_transform.m_position.x += dt * -0.01;
-        }
-        if (keyboardState[SDL_SCANCODE_D]) {
-            obj->m_transform.MoveX(dt * 0.1);
-        }
-        if (keyboardState[SDL_SCANCODE_Q]) {
-            obj->m_transform.MoveZ(dt * 0.1);
-        }
-        if (keyboardState[SDL_SCANCODE_E]) {
-            obj->m_transform.MoveZ(dt * -0.1);
-        }
-        if (keyboardState[SDL_SCANCODE_R]) {
-            obj->m_transform.m_position = glm::vec3(0.0f);
-        }
+        obj->Update(dt);
     }
 
     if (sec >= 1000) {

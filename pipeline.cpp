@@ -1,7 +1,7 @@
 #include "pch.h"
 #include "pipeline.h"
 #include "object.h"
-#include "frustum.h"
+#include "plane.h"
 
 void Pipeline::Draw(const Object* obj)
 {
@@ -11,22 +11,9 @@ void Pipeline::Draw(const Object* obj)
     m_uniform.world = obj->m_transform.GetWorldMatrix();
     m_uniform.texture = obj->m_texture;
 
-    // glm::vec3 min = glm::vec3(0.0f);
-    // glm::vec3 max = glm::vec3(0.0f);
-
-    // for (const auto& v : vertices) {
-    //     min.x = glm::min(min.x, v.position.x);
-    //     min.y = glm::min(min.y, v.position.y);
-    //     min.z = glm::min(min.z, v.position.z);
-
-    //    max.x = glm::max(max.x, v.position.x);
-    //    max.y = glm::max(max.y, v.position.y);
-    //    max.z = glm::max(max.z, v.position.z);
-    //}
-
-    // if (FrustumCulling(m_uniform.proj * m_uniform.view * m_uniform.world)) {
-    //     return;
-    // }
+    if (FrustumCulling(m_uniform.proj * m_uniform.view * m_uniform.world, obj->m_boundingVolume)) {
+        return;
+    }
 
     VertexShader(vertices);
 
@@ -56,6 +43,7 @@ int Pipeline::ComputeOutCode(const glm::ivec2& input, const glm::ivec2& min, con
     return code;
 }
 
+// Cohen–Sutherland algorithm
 bool Pipeline::LineClip(glm::ivec2& p0, glm::ivec2& p1, const glm::ivec2& min, const glm::ivec2& max)
 {
     int code0 = ComputeOutCode(p0, min, max);
@@ -106,6 +94,7 @@ bool Pipeline::LineClip(glm::ivec2& p0, glm::ivec2& p1, const glm::ivec2& min, c
     return false;
 }
 
+// Bresenham's line algorithm
 void Pipeline::DrawLine(glm::ivec2 p0, glm::ivec2 p1)
 {
     if (!LineClip(p0, p1, glm::ivec2(0, 0), glm::ivec2(m_width - 1, m_height - 1))) {
@@ -162,46 +151,40 @@ void Pipeline::DrawLine(glm::ivec2 p0, glm::ivec2 p1)
     }
 }
 
-bool Pipeline::FrustumCulling(const glm::mat4& mvp)
+float Pipeline::EdgeFunction(const glm::vec2& p0, const glm::vec2& p1, const glm::vec2& p2)
 {
-    glm::vec3 center = glm::vec3(0.0f);
-    float radius = glm::sqrt(3);
+    glm::vec2 a = p1 - p0;
+    glm::vec2 b = p2 - p0;
+    return a.x * b.y - a.y * b.x;
+}
 
+bool Pipeline::FrustumCulling(const glm::mat4& mvp, const AABB& boundingVolume)
+{
     glm::mat4 transpose = glm::transpose(mvp);
     std::array<Plane, 6> frustumPlanes = {
-        Plane(-(transpose[3] - transpose[1])), //+Y 0
-        Plane(-(transpose[3] + transpose[1])), //-Y 1
-        Plane(-(transpose[3] - transpose[0])), //+X 2
-        Plane(-(transpose[3] + transpose[0])), //-X 3
-        Plane(-(transpose[3] - transpose[2])), //+Z 4
-        Plane(-(transpose[3] + transpose[2])), //-Z 5
+        Plane(-(transpose[3] - transpose[1])), //+Y
+        Plane(-(transpose[3] + transpose[1])), //-Y
+        Plane(-(transpose[3] - transpose[0])), //+X
+        Plane(-(transpose[3] + transpose[0])), //-X
+        Plane(-(transpose[3] - transpose[2])), //+Z
+        Plane(-(transpose[3] + transpose[2])), //-Z
     };
 
-    glm::vec3 min = glm::vec3(-1.0f, -1.0f, -1.0f);
-    glm::vec3 max = glm::vec3(1.0f, 1.0f, 1.0f);
+    for (Plane& plane : frustumPlanes) {
+        glm::vec3 p = boundingVolume.min;
+        glm::vec3 n = boundingVolume.max;
 
-    // for (auto& plane : frustumPlanes) {
-    //     float d = plane.DistanceFromPoint(center);
-    //     if (d > radius) {
-    //         std::cout << "cull\n";
-    //         return true;
-    //     }
-    // }
-
-    for (auto plane : frustumPlanes) {
-        glm::vec3 p = min;
-        glm::vec3 n = max;
         if (plane.m_normal.x >= 0.0f) {
-            p.x = max.x;
-            n.x = min.x;
+            p.x = boundingVolume.max.x;
+            n.x = boundingVolume.min.x;
         }
         if (plane.m_normal.y >= 0.0f) {
-            p.y = max.y;
-            n.y = min.y;
+            p.y = boundingVolume.max.y;
+            n.y = boundingVolume.min.y;
         }
         if (plane.m_normal.z >= 0.0f) {
-            p.z = max.z;
-            n.z = min.z;
+            p.z = boundingVolume.max.z;
+            n.z = boundingVolume.min.z;
         }
 
         if (plane.DistanceFromPoint(n) > 0.0f) {
@@ -215,10 +198,7 @@ bool Pipeline::FrustumCulling(const glm::mat4& mvp)
 
 void Pipeline::Rasterizer(const std::array<Vertex, 3>& vertices)
 {
-    // clipping
-    if (vertices[0].position.z < -vertices[0].position.w) {
-        std::cout << "clip\n";
-    }
+    // TODO: clipping
 
     // perspective division
     // clip coordinate -> NDC
@@ -232,6 +212,14 @@ void Pipeline::Rasterizer(const std::array<Vertex, 3>& vertices)
     glm::ivec2 p1 = NDCToScreen(ndc1);
     glm::ivec2 p2 = NDCToScreen(ndc2);
 
+    // backface culling
+    // frontface : CCW
+    const float area = EdgeFunction(p0, p1, p2);
+    if (IsCullBackFace && area < 0) {
+        return;
+    }
+
+    // wireframe mode
     if (IsWireFrameMode) {
         DrawLine(p0, p1);
         DrawLine(p1, p2);
@@ -250,25 +238,34 @@ void Pipeline::Rasterizer(const std::array<Vertex, 3>& vertices)
             int index = x + y * m_width;
             glm::vec2 pixel = glm::vec2(static_cast<float>(x), static_cast<float>(y));
 
-            glm::vec3 bc = CalculateBarycentricCoordinate(pixel, p0, p1, p2);
+            // barycentric coordinate (w0, w1, w2)
+            float w0 = EdgeFunction(p1, p2, pixel) / area;
+            float w1 = EdgeFunction(p2, p0, pixel) / area;
+            float w2 = EdgeFunction(p0, p1, pixel) / area;
 
-            if ((bc.x >= 0.0f) && (bc.x <= 1.0f) && (bc.y >= 0.0f) && (bc.y <= 1.0f) && (bc.z >= 0.0f) && (bc.z <= 1.0f)) {
-                float depth = bc.x * ndc0.z + bc.y * ndc1.z + bc.z * ndc2.z;
+            if (w0 >= 0 && w1 >= 0 && w2 >= 0) {
+                float depth = w0 * ndc0.z + w1 * ndc1.z + w2 * ndc2.z;
 
                 // depth test
                 if (m_fragments[index].active && depth > m_fragments[index].depth) {
                     continue;
                 }
 
-                float invZ0 = 1.0f / vertices[0].position.w;
-                float invZ1 = 1.0f / vertices[1].position.w;
-                float invZ2 = 1.0f / vertices[2].position.w;
-                float invZ = 1.0f / (invZ0 * bc.x + invZ1 * bc.y + invZ2 * bc.z);
+                // perspective correction interpolation
+                w0 /= vertices[0].position.w;
+                w1 /= vertices[1].position.w;
+                w2 /= vertices[2].position.w;
 
-                // interpolation using barycentric coordinate
+                const float sum = w0 + w1 + w2;
+                w0 /= sum;
+                w1 /= sum;
+                w2 /= sum;
+
                 m_fragments[index].active = true;
                 m_fragments[index].depth = depth;
-                m_fragments[index].uv = (bc.x * vertices[0].uv * invZ0 + bc.y * vertices[1].uv * invZ1 + bc.z * vertices[2].uv * invZ2) * invZ;
+
+                // interpolation using barycentric coordinate
+                m_fragments[index].uv = w0 * vertices[0].uv + w1 * vertices[1].uv + w2 * vertices[2].uv;
             }
         }
     }
@@ -286,24 +283,4 @@ glm::ivec2 Pipeline::NDCToScreen(const glm::vec3& ndc)
     float screenY = (1.0f - ndc.y) * m_height * 0.5f - 0.5f;
 
     return glm::ivec2(static_cast<uint32_t>(screenX), static_cast<uint32_t>(screenY));
-}
-
-glm::vec3 Pipeline::CalculateBarycentricCoordinate(const glm::vec2& target, const glm::vec2& p0, const glm::vec2& p1, const glm::vec2& p2)
-{
-    glm::vec2 w = target - p2;
-    glm::vec2 u = p0 - p2;
-    glm::vec2 v = p1 - p2;
-
-    float wdotu = glm::dot(w, u);
-    float wdotv = glm::dot(w, v);
-    float udotv = glm::dot(u, v);
-    float udotu = glm::dot(u, u);
-    float vdotv = glm::dot(v, v);
-
-    float denom = udotv * udotv - udotu * vdotv;
-
-    float s = (wdotv * udotv - wdotu * vdotv) / denom;
-    float t = (wdotu * udotv - wdotv * udotu) / denom;
-
-    return glm::vec3(s, t, 1.0f - s - t);
 }
