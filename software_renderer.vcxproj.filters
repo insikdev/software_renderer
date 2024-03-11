@@ -44,6 +44,8 @@
   </ItemGroup>
   <ItemGroup>
     <None Include="README.md" />
+    <None Include="vcpkg.json" />
+    <None Include=".gitignore" />
   </ItemGroup>
   <ItemGroup>
     <Filter Include="pipeline">

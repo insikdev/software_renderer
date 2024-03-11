@@ -12,6 +12,7 @@ void Pipeline::Draw(const Object* obj)
     m_uniform.texture = obj->m_texture;
 
     if (FrustumCulling(m_uniform.proj * m_uniform.view * m_uniform.world, obj->m_boundingVolume)) {
+        std::cout << "frustum culling\n";
         return;
     }
 
@@ -43,7 +44,7 @@ int Pipeline::ComputeOutCode(const glm::ivec2& input, const glm::ivec2& min, con
     return code;
 }
 
-// Cohenâ€“Sutherland algorithm
+// Cohen?“Sutherland algorithm
 bool Pipeline::LineClip(glm::ivec2& p0, glm::ivec2& p1, const glm::ivec2& min, const glm::ivec2& max)
 {
     int code0 = ComputeOutCode(p0, min, max);
@@ -171,24 +172,19 @@ bool Pipeline::FrustumCulling(const glm::mat4& mvp, const AABB& boundingVolume)
     };
 
     for (Plane& plane : frustumPlanes) {
-        glm::vec3 p = boundingVolume.min;
         glm::vec3 n = boundingVolume.max;
 
         if (plane.m_normal.x >= 0.0f) {
-            p.x = boundingVolume.max.x;
             n.x = boundingVolume.min.x;
         }
         if (plane.m_normal.y >= 0.0f) {
-            p.y = boundingVolume.max.y;
             n.y = boundingVolume.min.y;
         }
         if (plane.m_normal.z >= 0.0f) {
-            p.z = boundingVolume.max.z;
             n.z = boundingVolume.min.z;
         }
 
         if (plane.DistanceFromPoint(n) > 0.0f) {
-            std::cout << "cull\n";
             return true;
         }
     }
@@ -201,19 +197,16 @@ void Pipeline::Rasterizer(const std::array<Vertex, 3>& vertices)
     // TODO: clipping
 
     // perspective division
-    // clip coordinate -> NDC
     glm::vec3 ndc0 = glm::vec3(vertices[0].position / vertices[0].position.w);
     glm::vec3 ndc1 = glm::vec3(vertices[1].position / vertices[1].position.w);
     glm::vec3 ndc2 = glm::vec3(vertices[2].position / vertices[2].position.w);
 
     // viewport transform
-    // NDC -> screen coordinate
     glm::ivec2 p0 = NDCToScreen(ndc0);
     glm::ivec2 p1 = NDCToScreen(ndc1);
     glm::ivec2 p2 = NDCToScreen(ndc2);
 
-    // backface culling
-    // frontface : CCW
+    // backface culling - frontface : CCW
     const float area = EdgeFunction(p0, p1, p2);
     if (IsCullBackFace && area < 0) {
         return;
