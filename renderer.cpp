@@ -23,7 +23,7 @@ Renderer::Renderer(std::string title, int width, int height)
     // std::shared_ptr<MeshData> rect = std::make_shared<MeshData>(GeometryHelper::CreateRectangle());
     std::shared_ptr<MeshData> cube = std::make_shared<MeshData>(GeometryHelper::CreateCube());
 
-    m_objects.push_back(new Object { cube, ResourceManager::GetTexture("assets/wall.jpg") });
+    m_objects.push_back(std::make_unique<Object>(cube, ResourceManager::GetTexture("assets/wall.jpg")));
 }
 
 Renderer::~Renderer()
@@ -112,7 +112,7 @@ void Renderer::Render(void)
 
     // draw
     for (const auto& obj : m_objects) {
-        p_pipeline->Draw(obj);
+        p_pipeline->Draw(obj.get());
     }
 
     // present

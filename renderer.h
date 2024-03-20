@@ -29,5 +29,5 @@ private:
     Fragment* m_fragments;
 
 private: // scene
-    std::vector<Object*> m_objects;
+    std::vector<std::unique_ptr<Object>> m_objects;
 };
